@@ -6,6 +6,16 @@ import { AuthManager } from "../auth/authManager";
 const RETRY_DELAYS_MS = [100, 500, 1000];
 const MAX_TRANSIENT_RETRIES = RETRY_DELAYS_MS.length;
 
+/** Field names only, never values — the values are CMMS work-order content
+ * (titles, descriptions, evidence text), not secrets, but they don't belong
+ * in container logs any more than the credentials do. */
+function shapeOf(value: unknown): string[] | string {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.keys(value as object);
+  }
+  return typeof value;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -97,8 +107,8 @@ export class ApiClient {
           method,
           path,
           status,
-          requestBody: options.data,
-          responseBody: axiosErr.response?.data,
+          requestFields: shapeOf(options.data),
+          responseFields: shapeOf(axiosErr.response?.data),
         });
         throw new ApiError(
           `Atlas API request failed: ${method} ${path}${status ? ` (${status})` : ""}`,

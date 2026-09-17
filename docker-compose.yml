@@ -2,7 +2,7 @@ services:
   atlas-mcp:
     build: .
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       API_BASE_URL: ${API_BASE_URL:-http://host.docker.internal:8080}
       API_EMAIL: ${API_EMAIL}
