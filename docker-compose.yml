@@ -2,7 +2,10 @@ services:
   atlas-mcp:
     build: .
     ports:
-      - "127.0.0.1:3000:3000"
+      # Host-side 3100, not 3000 — Atlas CMMS's own nginx already occupies host
+      # port 3000 in this setup (see /Users/surplus96/projects/atlas-cmms). The
+      # container's internal port stays 3000 (matches MCP_PORT/healthcheck below).
+      - "127.0.0.1:3100:3000"
     environment:
       API_BASE_URL: ${API_BASE_URL:-http://host.docker.internal:8080}
       API_EMAIL: ${API_EMAIL}
