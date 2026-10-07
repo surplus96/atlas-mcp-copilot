@@ -1,3 +1,7 @@
+// Added by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+// Changes: Register and verify procedure tasks while preserving existing tasks, notes and results.
+// Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 import { z } from "zod";
 import { ApiClient } from "../http/apiClient";
 import { errorResult, jsonResult } from "../util/mcpResult";

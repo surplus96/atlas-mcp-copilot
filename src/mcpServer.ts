@@ -1,3 +1,7 @@
+// Modified by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+// Changes: Register work-order task creation and retrieval tools.
+// Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 import { addWorkOrderTasks, addWorkOrderTasksShape, getWorkOrderTasks, getWorkOrderTasksShape } from "./tools/workOrderTasks";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ApiClient } from "./http/apiClient";

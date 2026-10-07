@@ -1,3 +1,7 @@
+// Added by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+// Changes: Cover ambiguous work-order creation timeouts without automatic retries.
+// Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 import axios from "axios";
 import { ApiClient } from "../src/http/apiClient";
 import { Config } from "../src/config";

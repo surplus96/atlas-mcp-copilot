@@ -1,3 +1,7 @@
+# Modified by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+# Changes: Run the application as a non-root user and set artifact ownership.
+# Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

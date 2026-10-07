@@ -1,3 +1,7 @@
+// Modified by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+// Changes: Require MCP_AUTH_TOKEN in every environment.
+// Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
 function requireEnv(name: string): string {

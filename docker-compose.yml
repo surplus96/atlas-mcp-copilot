@@ -1,3 +1,7 @@
+# Modified by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+# Changes: Bind the host port to loopback on 3100 and pass ALLOWED_HOSTS.
+# Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 services:
   atlas-mcp:
     build: .

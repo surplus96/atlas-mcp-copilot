@@ -1,3 +1,7 @@
+// Added by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+// Changes: Cover task validation, repeat calls and preservation of operator data.
+// Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 import { addWorkOrderTasks, addWorkOrderTasksShape } from "../src/tools/workOrderTasks";
 import { ApiClient } from "../src/http/apiClient";
 import { z } from "zod";

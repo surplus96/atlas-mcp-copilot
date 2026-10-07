@@ -1,3 +1,7 @@
+// Modified by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+// Changes: Enforce bearer authentication and validate the MCP Host header.
+// Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 import crypto from "crypto";
 import express, { Express, NextFunction, Request, Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";

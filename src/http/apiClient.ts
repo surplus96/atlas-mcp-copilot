@@ -1,3 +1,7 @@
+// Modified by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
+// Changes: Disable transient retries for work-order creation to avoid duplicates.
+// Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
+
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, Method } from "axios";
 import { Config } from "../config";
 import { Logger } from "../util/logger";

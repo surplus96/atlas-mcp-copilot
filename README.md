@@ -1,4 +1,31 @@
-# Atlas MCP
+<!-- Modified by surplus96 for atlas-mcp-copilot on 2026-10-07: document origin, local changes and current integration behavior. -->
+# Atlas MCP Copilot
+
+## Origin, license and modifications
+
+This repository is maintained by [surplus96](https://github.com/surplus96) and is
+based on [GabrielGB1999/Atlas-MCP](https://github.com/GabrielGB1999/Atlas-MCP).
+The original Git history is retained. The upstream baseline for these changes is
+[`fabced6`](https://github.com/GabrielGB1999/Atlas-MCP/commit/fabced6129df073f4a5808b5d2e43095d60f0da6).
+
+The original [Apache License 2.0](LICENSE) is retained, together with existing
+attribution notices. Modified files carry change notices identifying this
+repository's changes; newly added implementation and test files are also marked.
+
+Changes made for the [Uptime Copilot](https://github.com/surplus96/uptime-copilot)
+integration include:
+
+- Required MCP bearer authentication and validation of allowed Host headers.
+- A non-root Docker process and a host endpoint bound to `127.0.0.1:3100`.
+- Structured procedure Tasks and evidence notes, with existing tasks, operator
+  notes and recorded results preserved when the same procedure is registered again.
+- No automatic transient retry of work-order creation after an ambiguous failure.
+- Regression tests for task registration and work-order creation retry behavior.
+
+The Copilot application manages approval, persistent delivery IDs and partial-delivery
+retries. This MCP repository supplies the Atlas REST API tools used by that application.
+
+## Overview
 
 An MCP (Model Context Protocol) server that bridges Claude to the [Atlas CMMS](https://github.com/grashjs/cmms)
 work order REST API, exposed over Streamable HTTP.
@@ -19,10 +46,18 @@ memory, and refreshes it automatically (both preemptively before expiry and reac
 | `generate-weekly-work-order-report` | `POST /work-orders/search` (paged) | Executive summary for a given week, by `dueDate` |
 | `get-asset` | `GET /assets/{id}` | Full detail on one asset, read-only |
 | `list-assets` | `POST /assets/search` | Filter + paginate assets, read-only |
+| `add-work-order-tasks` | `GET/PATCH /tasks/work-order/{id}`, `GET/PATCH /tasks/{taskId}` | Add procedure tasks and evidence notes while preserving existing operator data |
+| `get-work-order-tasks` | `GET /tasks/work-order/{id}` | Read task definitions, notes and recorded results |
+
+Task tools use the numeric `workOrderId` returned by `create-work-order`. Their task
+results include Atlas task DTOs and numeric task IDs for follow-up operations.
+`add-work-order-tasks` accepts unique labels, `taskType: "SUBTASK"`, `options: []`
+and optional `notes`. It verifies saved tasks and notes before returning `verified: true`.
+Adding procedure tasks does not attach or consume inventory parts.
 
 ### Output matches what a human sees in the frontend, not the database schema
 
-Every tool renders people and entities as `{ id, name }` pairs instead of bare ids —
+The original work-order and asset tools render people and entities as `{ id, name }` pairs instead of bare ids —
 `get-work-order`'s `relations.primaryWorker` reads `{ "id": 7, "name": "John Smith" }`, not
 `"worker: ID 225"`. Two conventions apply everywhere, and are also declared in the MCP server's
 `instructions` field (sent once at connection time) so Claude applies them without being told
@@ -120,7 +155,8 @@ npm run dev
 | `MCP_PORT` | `3000` | Port for the MCP HTTP transport + `/health` |
 | `LOG_LEVEL` | `INFO` | `DEBUG \| INFO \| WARN \| ERROR` |
 | `JWT_EXPIRY_BUFFER_MINUTES` | `5` | Refresh the JWT this many minutes before it expires |
-| `MCP_AUTH_TOKEN` | *(unset)* | Bearer token required on `/mcp`. Unset = open endpoint (local dev only) |
+| `MCP_AUTH_TOKEN` | *(required)* | Bearer token required on `/mcp`; startup fails if unset |
+| `ALLOWED_HOSTS` | *(empty)* | Extra accepted Host-header values, comma-separated; include the port when present in the request |
 
 The service account must already exist (`POST /auth/signup` against the Atlas API) before this
 server starts — it only signs in, it doesn't create the account.
@@ -131,13 +167,13 @@ Local Claude clients (Desktop, Claude Code) can reach `localhost` directly. The 
 and claude.ai's custom connectors cannot — they need a public HTTPS URL. Before you put this
 server anywhere reachable from the internet:
 
-1. **Set `MCP_AUTH_TOKEN`** to a long random value (`openssl rand -hex 32`). Without it, `/mcp` has
-   no access control at all and anyone with the URL can act as your Atlas service account. The
-   server logs a `WARN` at startup if this is unset, precisely so it's not silently forgotten.
+1. **Set `MCP_AUTH_TOKEN`** to a long random value (`openssl rand -hex 32`). This fork requires
+   it even for local development and refuses to start without it.
 2. **Put it behind HTTPS** — a reverse proxy (Caddy, nginx + Let's Encrypt) or a platform that
    terminates TLS for you (Fly.io, Render, etc.).
 3. When adding it as a custom connector in claude.ai, supply the same token as the connector's
    bearer/auth header.
+4. Set `ALLOWED_HOSTS` to the Host-header value forwarded by your proxy.
 
 `GET /health` intentionally stays open with no token required, so container orchestrators and load
 balancers can probe it without the secret.
@@ -149,7 +185,10 @@ docker compose up -d --build
 ```
 
 `docker-compose.yml` reads `API_BASE_URL`, `API_EMAIL`, `API_PASSWORD`, `LOG_LEVEL`,
-`JWT_EXPIRY_BUFFER_MINUTES`, and `MCP_AUTH_TOKEN` from your shell/`.env`. The container exposes
+`JWT_EXPIRY_BUFFER_MINUTES`, `MCP_AUTH_TOKEN`, and `ALLOWED_HOSTS` from your shell/`.env`.
+The host MCP endpoint is `http://127.0.0.1:3100/mcp`; the container listens on port 3000.
+For local clients using that host endpoint, set `ALLOWED_HOSTS=127.0.0.1:3100,localhost:3100`
+as appropriate. The container exposes
 `GET /health` → `{ "status": "ok" }`, used by both the Dockerfile's `HEALTHCHECK` and the compose
 file.
 
@@ -225,7 +264,8 @@ Then set `API_EMAIL=mcp@atlas.local`, `API_PASSWORD=Password123!` before running
 - **401** → the client re-authenticates once and retries the request; a second 401 is surfaced as
   an error rather than retried again.
 - **Transient errors** (5xx, network/timeout) → retried up to 3 times with backoff `100ms → 500ms →
-  1000ms`.
+  1000ms`, except `POST /work-orders`. Creation failures are surfaced without automatic transient
+  retries because Atlas may have saved the order before the response was lost.
 - All logging is structured JSON on stdout/stderr. `password`, `accessToken`, `authorization`, and
   `signature` fields are redacted from logged context, at every log level, so raising `LOG_LEVEL` to
   `DEBUG` never leaks a credential or token.
@@ -244,5 +284,7 @@ Then set `API_EMAIL=mcp@atlas.local`, `API_PASSWORD=Password123!` before running
   has rather than hanging indefinitely.
 - **`/mcp` requests return 401 "missing or invalid bearer token"** — `MCP_AUTH_TOKEN` is set on the
   server; the client must send the exact same value as `Authorization: Bearer <token>`.
-- **Server logs `WARN: MCP_AUTH_TOKEN is not set...` at startup** — expected in local dev; set the
-  variable before exposing the port on any network you don't fully trust.
+- **Startup fails with `Missing required environment variable: MCP_AUTH_TOKEN`** — set a
+  bearer token in `.env` or the environment before starting the server.
+- **`/mcp` requests return 421** — add the legitimate request Host-header value to
+  `ALLOWED_HOSTS`, including its port if supplied.
