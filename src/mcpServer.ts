@@ -1,3 +1,4 @@
+import { addWorkOrderTasks, addWorkOrderTasksShape, getWorkOrderTasks, getWorkOrderTasksShape } from "./tools/workOrderTasks";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ApiClient } from "./http/apiClient";
 import { Logger } from "./util/logger";
@@ -103,5 +104,17 @@ export function createServer(apiClient: ApiClient, logger: Logger): McpServer {
     async (args) => listAssets(apiClient, args),
   );
 
+  server.tool(
+    "add-work-order-tasks",
+    "Add procedure tasks, preserving existing tasks and operator notes. Repeating identical labels is safe. Does not consume inventory.",
+    addWorkOrderTasksShape,
+    async (args) => addWorkOrderTasks(apiClient, args),
+  );
+  server.tool(
+    "get-work-order-tasks",
+    "Read procedure tasks, their notes and recorded results for a work order.",
+    getWorkOrderTasksShape,
+    async (args) => getWorkOrderTasks(apiClient, args),
+  );
   return server;
 }

@@ -89,7 +89,7 @@ export class ApiClient {
           continue;
         }
 
-        if (isTransient(err) && attempt < MAX_TRANSIENT_RETRIES) {
+        if (!(method === "POST" && path === "/work-orders") && isTransient(err) && attempt < MAX_TRANSIENT_RETRIES) {
           const delay = RETRY_DELAYS_MS[attempt];
           attempt += 1;
           this.logger.warn("Transient API error, retrying", {
