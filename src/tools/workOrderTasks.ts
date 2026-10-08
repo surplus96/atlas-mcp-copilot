@@ -1,5 +1,6 @@
 // Added by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
 // Changes: Register and verify procedure tasks while preserving existing tasks, notes and results.
+// Updated 2026-10-08: Match Atlas trimming of notes during verification and replay.
 // Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
 
 import { z } from "zod";
@@ -10,7 +11,7 @@ const taskInput = z.object({
   label: z.string().trim().min(1).max(1000),
   taskType: z.literal("SUBTASK").default("SUBTASK"),
   options: z.array(z.string()).length(0).default([]),
-  notes: z.string().max(20000).optional(),
+  notes: z.string().trim().max(20000).optional(),
 });
 export const addWorkOrderTasksShape = {
   workOrderId: z.number().int().positive(),
@@ -47,6 +48,8 @@ export async function getWorkOrderTasks(api: ApiClient, args: { workOrderId: num
 /** Atlas PATCH replaces the full list. Preserve every existing base, including refs/options. */
 export async function addWorkOrderTasks(api: ApiClient, args: { workOrderId: number; tasks: Input[] }) {
   try {
+    // Atlas Sanitizer.cleanText trims free text: compare the same normalized value.
+    args = { ...args, tasks: args.tasks.map((input) => ({ ...input, notes: input.notes?.trim() })) };
     const path = `/tasks/work-order/${args.workOrderId}`;
     const existing = await api.get<Task[]>(path);
     const missing = args.tasks.filter((input) => !existing.some((task) => isSame(task, input)));

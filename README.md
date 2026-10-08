@@ -288,3 +288,22 @@ Then set `API_EMAIL=mcp@atlas.local`, `API_PASSWORD=Password123!` before running
   bearer token in `.env` or the environment before starting the server.
 - **`/mcp` requests return 421** — add the legitimate request Host-header value to
   `ALLOWED_HOSTS`, including its port if supplied.
+
+
+### Task See details / long notes (2026-10-08)
+
+Atlas's **See details** control displays `task.notes`. The upstream PostgreSQL
+column is `varchar(255)`, even though this MCP accepts notes up to 20,000
+characters. Apply the included database migration before sending full procedures:
+
+```sh
+docker exec -i atlas_db sh -c 'psql -U "$POSTGRES_USER" -d atlas' < scripts/atlas-task-notes.sql
+```
+
+Adjust the database container/name for your installation. This removes the column
+length limit without changing its VARCHAR type or existing values. It persists in
+the DB volume and is compatible with the existing Atlas Hibernate `validate`
+configuration; apply it separately to each new database. An Atlas image rebuild
+is unnecessary. Notes retain line breaks and can be scrolled in the native UI.
+Repeated task delivery appends missing detail text while preserving operator notes
+and the current task value. MCP does not generate new procedures or evidence.

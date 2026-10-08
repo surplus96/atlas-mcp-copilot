@@ -1,5 +1,6 @@
 // Added by surplus96 for atlas-mcp-copilot; notice added 2026-10-07.
 // Changes: Cover task validation, repeat calls and preservation of operator data.
+// Updated 2026-10-08: Cover long multiline details and Atlas whitespace trimming.
 // Based on https://github.com/GabrielGB1999/Atlas-MCP; Apache-2.0.
 
 import { addWorkOrderTasks, addWorkOrderTasksShape } from "../src/tools/workOrderTasks";
@@ -40,4 +41,28 @@ it("rejects duplicate task labels and reports partial note failures", async () =
   const api = { get: jest.fn(async (path: string) => path === "/tasks/2" ? { id: 2, value: "OPEN", taskBase: { label: "Check", taskType: "SUBTASK", options: [] } } : [{ id: 2, value: "OPEN", taskBase: { label: "Check", taskType: "SUBTASK", options: [] } }]), patch: jest.fn(async () => { throw new Error("notes failed"); }) };
   const result = await addWorkOrderTasks(api as unknown as ApiClient, { workOrderId: 10, tasks: [input] });
   expect(result.isError).toBe(true);
+});
+
+
+it("delivers long multiline details intact and preserves completed results on replay", async () => {
+  const notes = "[조치사항]\n승인된 점검\n\n[상세 절차]\n" + "승인된 관측 근거와 매뉴얼 설명\n".repeat(100);
+  const input = { label: "[comp1] 01 승인된 점검", taskType: "SUBTASK" as const, options: [], notes };
+  expect(notes.length).toBeGreaterThan(255);
+  expect(z.object(addWorkOrderTasksShape).safeParse({ workOrderId: 10, tasks: [input] }).success).toBe(true);
+  const stored = { id: 8, taskBase: { label: input.label, taskType: input.taskType, options: [] }, notes: "현장 메모", value: "COMPLETE" };
+  const api = {
+    get: jest.fn(async (path: string) => path === "/tasks/8" ? stored : [stored]),
+    patch: jest.fn(async (_path: string, body: { notes: string; value: string }) => {
+      stored.notes = body.notes.trim();
+      stored.value = body.value;
+      return stored;
+    }),
+  };
+  const first = await addWorkOrderTasks(api as unknown as ApiClient, { workOrderId: 10, tasks: [input] });
+  expect(first.isError).toBeUndefined();
+  expect(stored.notes).toBe("현장 메모\n\n" + notes.trim());
+  expect(stored.value).toBe("COMPLETE");
+  const second = await addWorkOrderTasks(api as unknown as ApiClient, { workOrderId: 10, tasks: [input] });
+  expect(second.isError).toBeUndefined();
+  expect(api.patch).toHaveBeenCalledTimes(1);
 });
